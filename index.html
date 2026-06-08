@@ -772,23 +772,16 @@ window.saveSetup = function() {
 
 // ── Init ──
 async function init() {
-  const cfg = getConfig();
-  if (cfg) {
-    await initFirebase(cfg);
-  } else {
-    hideLoading();
-    document.getElementById('statusDot').style.background = '#E8A020';
-    document.getElementById('statusText').textContent = 'Niet verbonden';
-    // Show setup prompt in totaal section
-    document.getElementById('totaal').innerHTML = `
-      <div class="page-title">Welkom bij MO11-1</div>
-      <div class="card" style="text-align:center;padding:2rem">
-        <p style="margin-bottom:1rem;color:var(--text2)">Stel eerst een gedeelde database in zodat alle coaches dezelfde gegevens zien.</p>
-        <button class="btn-primary" onclick="showSection('setup')">Database instellen</button>
-      </div>
-    `;
-    document.getElementById('loading').style.display = 'none';
-  }
+  const cfg = {
+    apiKey: "AIzaSyDjq31Eo-sfL7ARA71etCjiCF6ZCnz4eoY",
+    authDomain: "mo11-1-933ae.firebaseapp.com",
+    databaseURL: "https://mo11-1-933ae-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "mo11-1-933ae",
+    storageBucket: "mo11-1-933ae.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:000000000000"
+  };
+  await initFirebase(cfg);
 }
 
 // Nav buttons setup
