@@ -321,6 +321,7 @@
     <button class="nav-btn" onclick="showSection('najaarscomp')">Najaarscomp.</button>
     <button class="nav-btn" onclick="showSection('zaalcomp')">Zaalcomp.</button>
     <button class="nav-btn" onclick="showSection('lentecomp')">Lentecomp.</button>
+    <button class="nav-btn" onclick="showSection('oefenwedstrijden')">Oefenwedstr.</button>
     <button class="nav-btn invoer-btn" onclick="showSection('invoer')">＋ Wedstrijd</button>
     <button class="nav-btn" onclick="showSection('spelers')">Speelsters</button>
   </nav>
@@ -332,6 +333,7 @@
   <div class="section" id="najaarscomp"></div>
   <div class="section" id="zaalcomp"></div>
   <div class="section" id="lentecomp"></div>
+  <div class="section" id="oefenwedstrijden"></div>
   <div class="section" id="invoer"></div>
   <div class="section" id="spelers"></div>
   <div class="section" id="setup"></div>
@@ -347,6 +349,7 @@ const COMPS = [
   { id: 'najaarscomp', naam: 'Najaarscompetitie' },
   { id: 'zaalcomp', naam: 'Zaalcompetitie' },
   { id: 'lentecomp', naam: 'Lentecompetitie' },
+  { id: 'oefenwedstrijden', naam: 'Oefenwedstrijden' },
 ];
 
 let db = null;
@@ -404,7 +407,7 @@ window.showSection = function(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const navIds = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','invoer','spelers'];
+  const navIds = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','oefenwedstrijden','invoer','spelers'];
   const idx = navIds.indexOf(id);
   if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
   render(id);
@@ -790,7 +793,7 @@ async function init() {
 
 // Nav buttons setup
 document.querySelectorAll('.nav-btn').forEach((btn, i) => {
-  const ids = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','invoer','spelers'];
+  const ids = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','oefenwedstrijden','invoer','spelers'];
   btn.onclick = () => showSection(ids[i]);
 });
 
