@@ -664,6 +664,28 @@ function berekenStand(compId) {
   return Object.values(stand).sort((a,b) => b.pts-a.pts || (b.dv-b.dt)-(a.dv-a.dt) || b.dv-a.dv);
 }
 
+function htmlRanglijstCompact(compId) {
+  const stand = berekenStand(compId);
+  if (!stand.length) return `<p class="empty" style="font-size:12px">Nog geen wedstrijden.</p>`;
+  return `<table class="stand-table">
+    <thead><tr>
+      <th>#</th><th>Team</th><th>G</th><th>W</th><th>Gl</th><th>V</th>
+      <th>Pts</th><th>Saldo</th>
+    </tr></thead>
+    <tbody>${stand.map((t,i) => {
+      const posClass = i===0?'p1':i===1?'p2':i===2?'p3':'';
+      const saldo = t.dv - t.dt;
+      return `<tr class="${t.rosmalen?'rosmalen-row':''}">
+        <td class="stand-pos ${posClass}">${i+1}</td>
+        <td style="font-weight:${t.rosmalen?'700':'400'};color:${t.rosmalen?'var(--green)':'var(--text)'};font-size:12px">${t.naam}</td>
+        <td>${t.g}</td><td>${t.w}</td><td>${t.gl}</td><td>${t.v}</td>
+        <td style="font-family:'Syne';font-weight:700">${t.pts}</td>
+        <td style="color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${saldo}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
 function htmlRanglijst(compId) {
   const stand = berekenStand(compId);
   if (!stand.length) return `<p class="empty">Nog geen wedstrijden — voeg tegenstanders toe via "Poule-uitslag invoeren".</p>`;
@@ -782,25 +804,29 @@ function renderTotaal() {
   const stats = getStats(all);
   const topscore = getTopscorers(all);
 
-  // Ranglijsten van de 4 competities (niet oefenwedstrijden)
-  const ranglijsten = COMPS.filter(comp => comp.id !== 'oefenwedstrijden').map(comp => {
-    const stand = berekenStand(comp.id);
+  // Ranglijsten van de 4 competities (niet oefenwedstrijden) — 2 per rij
+  const rangItems = COMPS.filter(comp => comp.id !== 'oefenwedstrijden').map(comp => {
     const ws = wedstrijdenVoor(comp.id);
-    if (!stand.length && !ws.length) return `
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-header" style="margin-bottom:.5rem">
-          <div class="card-title" style="cursor:pointer" onclick="showSection('${comp.id}')">${comp.naam}</div>
-        </div>
-        <p class="empty">Nog geen wedstrijden ingevoerd.</p>
-      </div>`;
-    return `
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-header" style="margin-bottom:.75rem">
-          <div class="card-title" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="showSection('${comp.id}')">${comp.naam}</div>
-        </div>
-        ${htmlRanglijst(comp.id)}
-      </div>`;
-  }).join('');
+    const stand = berekenStand(comp.id);
+    const inhoud = (!stand.length && !ws.length)
+      ? `<p class="empty" style="font-size:12px">Nog geen wedstrijden ingevoerd.</p>`
+      : htmlRanglijstCompact(comp.id);
+    return `<div class="card" style="min-width:0">
+      <div class="card-header" style="margin-bottom:.75rem">
+        <div class="card-title" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="showSection('${comp.id}')">${comp.naam}</div>
+      </div>
+      ${inhoud}
+    </div>`;
+  });
+
+  // Pair them into rows of 2
+  const ranglijsten = rangItems.reduce((rows, item, i) => {
+    if (i % 2 === 0) rows.push([item]);
+    else rows[rows.length-1].push(item);
+    return rows;
+  }, []).map(row =>
+    `<div style="display:grid;grid-template-columns:repeat(${row.length},1fr);gap:12px;margin-bottom:12px">${row.join('')}</div>`
+  ).join('');
 
   document.getElementById('totaal').innerHTML = `
     <div class="page-title">Totaal overzicht</div>
