@@ -279,6 +279,10 @@
   .pcs-val { font-weight: 600; font-family: 'Syne', sans-serif; }
   .pcs-lbl { color: var(--text3); font-size: 11px; }
   .firebase-setup { max-width: 560px; margin: 0 auto; }
+  .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem; }
+  .modal { background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2); }
+  .modal-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem; }
+  .modal-title { font-family:'Syne',sans-serif;font-size:16px;font-weight:700; }
   .stand-table td.rosmalen { background: rgba(26,158,110,0.07); font-weight: 600; }
   .stand-table tr.rosmalen-row td { background: rgba(26,158,110,0.07); }
   .stand-pos { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--text3); }
@@ -335,6 +339,7 @@
     <button class="nav-btn" onclick="showSection('oefenwedstrijden')">Oefenwedstr.</button>
     <button class="nav-btn invoer-btn" onclick="showSection('invoer')">＋ Wedstrijd</button>
     <button class="nav-btn" onclick="showSection('spelers')">Speelsters</button>
+    <button class="nav-btn" onclick="showSection('tegenstanders')">Tegenstanders</button>
   </nav>
 </div>
 
@@ -347,6 +352,7 @@
   <div class="section" id="oefenwedstrijden"></div>
   <div class="section" id="invoer"></div>
   <div class="section" id="spelers"></div>
+  <div class="section" id="tegenstanders"></div>
   <div class="section" id="setup"></div>
 </main>
 
@@ -367,7 +373,8 @@ let db = null;
 let state = {
   spelers: ['Emma','Lotte','Sophie','Julia','Nina','Fleur','Saar','Merel','Lisa','Bo'],
   wedstrijden: {},
-  poulewedstrijden: {}
+  poulewedstrijden: {},
+  tegenstanders: {}
 };
 let currentSection = 'totaal';
 let extraGoalRows = 0;
@@ -392,6 +399,7 @@ async function initFirebase(config) {
       state.spelers = data.spelers || state.spelers;
       state.wedstrijden = data.wedstrijden || {};
       state.poulewedstrijden = data.poulewedstrijden || {};
+      state.tegenstanders = data.tegenstanders || {};
     }
     hideLoading();
     render(currentSection);
@@ -420,7 +428,7 @@ window.showSection = function(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const navIds = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','oefenwedstrijden','invoer','spelers'];
+  const navIds = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','oefenwedstrijden','invoer','spelers','tegenstanders'];
   const idx = navIds.indexOf(id);
   if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
   render(id);
@@ -430,6 +438,7 @@ function render(id) {
   if (id === 'totaal') renderTotaal();
   else if (id === 'invoer') renderInvoer();
   else if (id === 'spelers') renderSpelers();
+  else if (id === 'tegenstanders') renderTegenstanders();
   else if (id === 'setup') renderSetup();
   else renderComp(id);
 }
@@ -526,6 +535,66 @@ function htmlWedstrijden(ws) {
   </table>`;
 }
 
+// ── Gecombineerde wedstrijdentabel (eigen + poule) ──
+function htmlAlleWedstrijden(compId) {
+  const eigen = wedstrijdenVoor(compId);
+  const poule = getPoulewedstrijden(compId);
+
+  // Merge into unified list
+  const alles = [
+    ...eigen.map(w => ({ datum: w.datum||'', soort: 'eigen', data: w })),
+    ...poule.map(w => ({ datum: w.datum||'', soort: 'poule', data: w }))
+  ].sort((a,b) => a.datum.localeCompare(b.datum));
+
+  if (!alles.length) return `<p class="empty">Nog geen wedstrijden ingevoerd.</p>`;
+
+  return `<table>
+    <thead><tr>
+      <th>Datum</th><th>Wedstrijd</th>
+      <th>Uitslag</th><th class="hide-mob">R</th>
+      <th class="hide-mob">Scorers</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${alles.map(({ soort, data: w }) => {
+      if (soort === 'eigen') {
+        const r = resultaat(w);
+        const thuisUit = w.thu === 'T' ? 'Thuis' : 'Uit';
+        const tegenstander = w.teg;
+        const matchLabel = w.thu === 'T'
+          ? `<span style="color:var(--green);font-weight:600">Rosmalen</span> vs ${tegenstander}`
+          : `${tegenstander} vs <span style="color:var(--green);font-weight:600">Rosmalen</span>`;
+        const scorers = (w.goals||[]).map(g =>
+          `${g.s}${g.sc?'<span class="badge badge-sc" style="margin-left:3px">SC</span>':''}${g.sb?'<span class="badge badge-sc" style="margin-left:3px;background:#EEE6FB;color:#5B1FA3">SB</span>':''}${g.a?`<span style="color:var(--text3);font-size:11px"> ▸${g.a}</span>`:''}`
+        ).join(', ');
+        const uitslag = w.thu === 'T' ? `${w.dv}–${w.dt}` : `${w.dt}–${w.dv}`;
+        return `<tr>
+          <td style="white-space:nowrap;font-size:12px">${w.datum||'–'}</td>
+          <td style="font-size:13px">${matchLabel}</td>
+          <td><span class="score">${uitslag}</span></td>
+          <td class="hide-mob"><span class="badge badge-${r}">${r}</span></td>
+          <td class="hide-mob" style="font-size:12px;max-width:180px;line-height:1.5">${scorers||'–'}</td>
+          <td style="display:flex;gap:4px">
+            <button class="btn-sm" onclick="openGoalsModal('${w.id}')" title="Doelpunten bewerken">⚽</button>
+            <button class="btn-danger" onclick="deleteWedstrijd('${w.id}')">✕</button>
+          </td>
+        </tr>`;
+      } else {
+        // poule wedstrijd
+        const s1 = w.s1, s2 = w.s2;
+        const rClass = s1 > s2 ? 'W' : s1 < s2 ? 'V' : 'G';
+        return `<tr style="color:var(--text2)">
+          <td style="white-space:nowrap;font-size:12px">${w.datum||'–'}</td>
+          <td style="font-size:13px">${w.t1} vs ${w.t2}</td>
+          <td><span class="score" style="font-size:14px">${w.s1}–${w.s2}</span></td>
+          <td class="hide-mob"><span style="font-size:11px;color:var(--text3)">poule</span></td>
+          <td class="hide-mob"></td>
+          <td><button class="btn-danger" onclick="deletePouleWedstrijd('${w.id}','${w.competitie}')">✕</button></td>
+        </tr>`;
+      }
+    }).join('')}</tbody>
+  </table>`;
+}
+
 // ── Render topscorers ──
 function htmlTopscorers(topscore) {
   if (!topscore.length) return `<p class="empty">Geen doelpunten geregistreerd.</p>`;
@@ -606,24 +675,20 @@ function htmlRanglijst(compId) {
 
 function htmlPouleInvoer(compId) {
   const pw = getPoulewedstrijden(compId);
-  // Collect known teams from own matches
-  const teams = [...new Set(wedstrijdenVoor(compId).map(w => w.teg))];
-  const teamOpts = (selected='') => ['<option value="">– team –', ...teams.map(t=>`<option value="${t}" ${t===selected?'selected':''}>${t}</option>`)].join('');
-  const pwRows = pw.length ? pw.map(w => `
-    <div class="poule-row">
-      <span style="font-size:13px;flex:1">${w.t1} ${w.s1}–${w.s2} ${w.t2}</span>
-      <button class="btn-danger" onclick="deletePouleWedstrijd('${w.id}','${compId}')">✕</button>
-    </div>`).join('') : '';
+  // Build team options: tegenstanders lijst + Rosmalen
+  const tegList = (state.tegenstanders[compId] || []).slice().sort();
+  const allTeams = ['Rosmalen MO11-1', ...tegList];
+  const teamOpts = (sel='') => ['<option value="">– team –', ...allTeams.map(t=>`<option value="${t}" ${t===sel?'selected':''}>${t}</option>`)].join('');
   return `
-    ${pwRows ? `<div style="margin-bottom:10px">${pwRows}</div>` : ''}
     <div class="poule-invoer">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px">Uitslag invoeren</div>
-      <div class="poule-row">
-        <input type="text" id="pw_t1_${compId}" placeholder="Thuisteam" style="flex:1;min-width:100px">
+      <div class="poule-row" style="flex-wrap:wrap">
+        <input type="date" id="pw_datum_${compId}" value="${new Date().toISOString().slice(0,10)}" style="font-size:13px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--text)">
+        <select id="pw_t1_${compId}" style="flex:1;min-width:100px;font-size:13px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--text)">${teamOpts()}</select>
         <input type="number" class="score-in" id="pw_s1_${compId}" value="0" min="0">
         <span class="vs-label">–</span>
         <input type="number" class="score-in" id="pw_s2_${compId}" value="0" min="0">
-        <input type="text" id="pw_t2_${compId}" placeholder="Uitteam" style="flex:1;min-width:100px">
+        <select id="pw_t2_${compId}" style="flex:1;min-width:100px;font-size:13px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--text)">${teamOpts()}</select>
         <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="slaPouleOp('${compId}')">Opslaan</button>
       </div>
     </div>`;
@@ -656,7 +721,7 @@ function renderComp(id) {
       <button class="tab-btn active" id="tab_w_${id}" onclick="switchTab('${id}','w')">Wedstrijden</button>
       <button class="tab-btn" id="tab_t_${id}" onclick="switchTab('${id}','t')">Topscoorders</button>
     </div>
-    <div class="card" id="pane_w_${id}">${htmlWedstrijden(ws)}</div>
+    <div class="card" id="pane_w_${id}">${htmlAlleWedstrijden(id)}</div>
     <div class="card" id="pane_t_${id}" style="display:none">${htmlTopscorers(topscore)}</div>
   `;
 }
@@ -682,7 +747,8 @@ window.slaPouleOp = async function(compId) {
   if (t1 === t2) { toast('Teams mogen niet hetzelfde zijn'); return; }
   const id = 'pw_' + Date.now();
   if (!state.poulewedstrijden) state.poulewedstrijden = {};
-  state.poulewedstrijden[id] = { id, competitie: compId, t1, t2, s1, s2 };
+  const datum = document.getElementById('pw_datum_' + compId)?.value || '';
+  state.poulewedstrijden[id] = { id, competitie: compId, datum, t1, t2, s1, s2 };
   await save();
   toast('Uitslag opgeslagen ✓');
   renderComp(compId);
@@ -740,7 +806,7 @@ function renderInvoer() {
         <div class="form-grid">
           <div class="form-group">
             <label>Competitie</label>
-            <select id="f_comp">${compOpts}</select>
+            <select id="f_comp" onchange="updateTegenstanders()">${compOpts}</select>
           </div>
           <div class="form-group">
             <label>Datum</label>
@@ -752,7 +818,9 @@ function renderInvoer() {
           </div>
           <div class="form-group">
             <label>Tegenstander</label>
-            <input type="text" id="f_teg" placeholder="Naam tegenstander">
+            <select id="f_teg" onchange="updateTegenstander()">
+              <option value="">– selecteer tegenstander –</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Doelpunten voor</label>
@@ -772,6 +840,7 @@ function renderInvoer() {
       <button class="btn-primary" onclick="slaOp()">Wedstrijd opslaan</button>
     </div>
   `;
+  updateTegenstanders();
 }
 
 window.addGoalRow = function() {
@@ -828,11 +897,47 @@ window.deleteWedstrijd = async function(id) {
   if (comp) showSection(comp);
 }
 
+// ── Tegenstanders ──
+window.updateTegenstanders = function() {
+  const compId = document.getElementById('f_comp')?.value;
+  if (!compId) return;
+  const sel = document.getElementById('f_teg');
+  if (!sel) return;
+  const lijst = (state.tegenstanders[compId] || []).slice().sort();
+  sel.innerHTML = '<option value="">– selecteer tegenstander –</option>'
+    + lijst.map(t => `<option value="${t}">${t}</option>`).join('')
+    + '<option value="__nieuw__">＋ Nieuwe tegenstander toevoegen…</option>';
+}
+
+window.updateTegenstander = function() {
+  const sel = document.getElementById('f_teg');
+  if (sel.value === '__nieuw__') {
+    const naam = prompt('Naam nieuwe tegenstander:');
+    if (naam && naam.trim()) {
+      voegTegenstanderToe(document.getElementById('f_comp').value, naam.trim(), sel);
+    } else {
+      sel.value = '';
+    }
+  }
+}
+
+async function voegTegenstanderToe(compId, naam, sel) {
+  if (!state.tegenstanders[compId]) state.tegenstanders[compId] = [];
+  if (!state.tegenstanders[compId].includes(naam)) {
+    state.tegenstanders[compId].push(naam);
+    await save();
+    toast(`${naam} toegevoegd`);
+  }
+  updateTegenstanders();
+  if (sel) sel.value = naam;
+}
+
 // ── Spelers ──
 function renderSpelers() {
   document.getElementById('spelers').innerHTML = `
     <div class="page-title">Speelsters</div>
     <div class="card">
+
       <div style="display:flex;gap:8px;margin-bottom:1rem">
         <input type="text" id="new_sp" placeholder="Naam nieuwe speelster" style="flex:1;font-family:'DM Sans';font-size:14px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);outline:none">
         <button class="btn-primary" onclick="addSpeler()">Toevoegen</button>
@@ -866,6 +971,60 @@ window.deleteSpeler = async function(i) {
   state.spelers.splice(i,1);
   await save();
   renderSpelers();
+}
+
+// ── Tegenstander beheer (onderdeel van spelers-pagina) ──
+function htmlTegstandBeheer() {
+  return COMPS.filter(comp => comp.id !== 'oefenwedstrijden').map(comp => {
+    const lijst = (state.tegenstanders[comp.id] || []).slice().sort();
+    return `<div style="margin-bottom:1.25rem">
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">${comp.naam}</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="new_teg_${comp.id}" placeholder="Naam tegenstander"
+          style="flex:1;font-family:'DM Sans';font-size:14px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);outline:none">
+        <button class="btn-primary" style="font-size:13px;padding:8px 14px" onclick="addTegenstander('${comp.id}')">Toevoegen</button>
+      </div>
+      <div>${lijst.length ? lijst.map(t => `
+        <div class="speler-item">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="speler-avatar" style="background:var(--amber-light);color:#8B5E0A">${t.slice(0,2).toUpperCase()}</div>
+            <span style="font-weight:500">${t}</span>
+          </div>
+          <button class="btn-danger" onclick="deleteTegenstander('${comp.id}','${t}')">✕</button>
+        </div>`).join('') : `<p style="font-size:13px;color:var(--text3);padding:6px 0">Nog geen tegenstanders ingevoerd.</p>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.addTegenstander = async function(compId) {
+  const input = document.getElementById('new_teg_' + compId);
+  const naam = input.value.trim();
+  if (!naam) return;
+  if (!state.tegenstanders[compId]) state.tegenstanders[compId] = [];
+  if (state.tegenstanders[compId].includes(naam)) { toast('Al in de lijst'); return; }
+  state.tegenstanders[compId].push(naam);
+  await save();
+  toast(`${naam} toegevoegd`);
+  renderSpelers();
+}
+
+window.deleteTegenstander = async function(compId, naam) {
+  if (!confirm(`${naam} verwijderen uit de lijst?`)) return;
+  state.tegenstanders[compId] = (state.tegenstanders[compId] || []).filter(t => t !== naam);
+  await save();
+  toast(`${naam} verwijderd`);
+  renderSpelers();
+}
+
+// ── Tegenstanders pagina ──
+function renderTegenstanders() {
+  document.getElementById('tegenstanders').innerHTML = `
+    <div class="page-title">Tegenstanders</div>
+    <div class="card">
+      ${htmlTegstandBeheer()}
+    </div>
+  `;
 }
 
 // ── Setup ──
@@ -922,13 +1081,79 @@ async function init() {
   await initFirebase(cfg);
 }
 
+
+window.openGoalsModal = function(wid) {
+  const w = state.wedstrijden[wid];
+  if (!w) return;
+  const spOpts = (sel='') => ['<option value="">– speelster –', ...state.spelers.map(s=>`<option value="${s}" ${s===sel?'selected':''}>${s}</option>`)].join('');
+  const asOpts = (sel='') => ['<option value="">Assist: geen</option>', ...state.spelers.map(s=>`<option value="${s}" ${s===sel?'selected':''}>${s}</option>`)].join('');
+  const goalsHtml = (w.goals||[]).map((g,i) => `
+    <div class="goal-row" id="mg_${i}">
+      <select class="g_sp">${spOpts(g.s)}</select>
+      <label class="sc-toggle"><input type="checkbox" class="g_sc" ${g.sc?'checked':''}> SC</label>
+      <label class="sc-toggle"><input type="checkbox" class="g_sb" ${g.sb?'checked':''}> SB</label>
+      <select class="g_as">${asOpts(g.a||'')}</select>
+      <button class="btn-danger" onclick="this.closest('.goal-row').remove()">✕</button>
+    </div>`).join('');
+  const r = resultaat(w);
+  document.getElementById('goals_modal_inner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">${w.datum||''} — ${w.teg} (${w.dv}–${w.dt})</div>
+      <button class="btn-danger" onclick="closeGoalsModal()">✕</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:10px">Doelpunten Rosmalen</div>
+    <div id="modal_goals">${goalsHtml}</div>
+    <button class="btn-sm" style="margin-bottom:1rem" onclick="addModalGoalRow('${wid}')">+ doelpunt toevoegen</button>
+    <br>
+    <button class="btn-primary" onclick="saveGoalsModal('${wid}')">Opslaan</button>
+  `;
+  document.getElementById('goals_modal').style.display = 'flex';
+}
+
+window.addModalGoalRow = function(wid) {
+  const spOpts = ['<option value="">– speelster –', ...state.spelers.map(s=>`<option value="${s}">${s}</option>`)].join('');
+  const asOpts = ['<option value="">Assist: geen</option>', ...state.spelers.map(s=>`<option value="${s}">${s}</option>`)].join('');
+  const id = 'mg_' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'goal-row'; div.id = id;
+  div.innerHTML = `
+    <select class="g_sp">${spOpts}</select>
+    <label class="sc-toggle"><input type="checkbox" class="g_sc"> SC</label>
+    <label class="sc-toggle"><input type="checkbox" class="g_sb"> SB</label>
+    <select class="g_as">${asOpts}</select>
+    <button class="btn-danger" onclick="this.closest('.goal-row').remove()">✕</button>
+  `;
+  document.getElementById('modal_goals').appendChild(div);
+}
+
+window.saveGoalsModal = async function(wid) {
+  const goals = [];
+  document.querySelectorAll('#modal_goals .goal-row').forEach(row => {
+    const sp = row.querySelector('.g_sp').value;
+    const sc = row.querySelector('.g_sc').checked;
+    const sb = row.querySelector('.g_sb').checked;
+    const as = row.querySelector('.g_as').value;
+    if (sp) goals.push({ s:sp, sc, sb, a:as||null });
+  });
+  state.wedstrijden[wid].goals = goals;
+  await save();
+  toast('Doelpunten opgeslagen ✓');
+  closeGoalsModal();
+}
+
+window.closeGoalsModal = function(e) {
+  if (e && e.target !== document.getElementById('goals_modal')) return;
+  document.getElementById('goals_modal').style.display = 'none';
+}
+
 // Nav buttons setup
 document.querySelectorAll('.nav-btn').forEach((btn, i) => {
-  const ids = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','oefenwedstrijden','invoer','spelers'];
+  const ids = ['totaal','voorcomp','najaarscomp','zaalcomp','lentecomp','oefenwedstrijden','invoer','spelers','tegenstanders'];
   btn.onclick = () => showSection(ids[i]);
 });
 
 init();
 </script>
+<div id="goals_modal" style="display:none" class="modal-overlay" onclick="closeGoalsModal(event)"><div class="modal" id="goals_modal_inner"></div></div>
 </body>
 </html>
