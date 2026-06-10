@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Rosmalen MO11-1 — Hockey Stats</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -392,6 +395,17 @@ async function initFirebase(config) {
   db = getDatabase(app);
   document.getElementById('statusDot').style.background = '#5DCAA5';
   document.getElementById('statusText').textContent = 'Live';
+
+  // ── Cache buster: force reload if new version deployed ──
+  const APP_VERSION = '202606100927';
+  const storedVersion = sessionStorage.getItem('mo11_version');
+  if (storedVersion && storedVersion !== APP_VERSION) {
+    sessionStorage.setItem('mo11_version', APP_VERSION);
+    location.reload(true);
+    return;
+  }
+  sessionStorage.setItem('mo11_version', APP_VERSION);
+
   // Real-time sync
   onValue(ref(db, 'mo11'), (snap) => {
     if (snap.exists()) {
