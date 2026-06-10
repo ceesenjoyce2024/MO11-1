@@ -990,7 +990,10 @@ function htmlTegstandBeheer() {
             <div class="speler-avatar" style="background:var(--amber-light);color:#8B5E0A">${t.slice(0,2).toUpperCase()}</div>
             <span style="font-weight:500">${t}</span>
           </div>
-          <button class="btn-danger" onclick="deleteTegenstander('${comp.id}','${t}')">✕</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="hernoem('${comp.id}','${t}')">✏️</button>
+            <button class="btn-danger" onclick="deleteTegenstander('${comp.id}','${t}')">✕</button>
+          </div>
         </div>`).join('') : `<p style="font-size:13px;color:var(--text3);padding:6px 0">Nog geen tegenstanders ingevoerd.</p>`}
       </div>
     </div>`;
@@ -1015,6 +1018,29 @@ window.deleteTegenstander = async function(compId, naam) {
   await save();
   toast(`${naam} verwijderd`);
   renderSpelers();
+}
+
+window.hernoem = async function(compId, oudNaam) {
+  const nieuwNaam = prompt(`Nieuwe naam voor "${oudNaam}":`, oudNaam);
+  if (!nieuwNaam || !nieuwNaam.trim() || nieuwNaam.trim() === oudNaam) return;
+  const n = nieuwNaam.trim();
+  // Update tegenstanders lijst
+  const idx = (state.tegenstanders[compId] || []).indexOf(oudNaam);
+  if (idx !== -1) state.tegenstanders[compId][idx] = n;
+  // Update alle wedstrijden van Rosmalen met die tegenstander
+  Object.values(state.wedstrijden).forEach(w => {
+    if (w.competitie === compId && w.teg === oudNaam) w.teg = n;
+  });
+  // Update poule-wedstrijden
+  Object.values(state.poulewedstrijden || {}).forEach(w => {
+    if (w.competitie === compId) {
+      if (w.t1 === oudNaam) w.t1 = n;
+      if (w.t2 === oudNaam) w.t2 = n;
+    }
+  });
+  await save();
+  toast(`"${oudNaam}" hernoemd naar "${n}"`);
+  renderTegenstanders();
 }
 
 // ── Tegenstanders pagina ──
