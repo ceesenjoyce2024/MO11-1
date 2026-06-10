@@ -669,7 +669,7 @@ function htmlRanglijstCompact(compId) {
   if (!stand.length) return `<p class="empty" style="font-size:12px">Nog geen wedstrijden.</p>`;
   return `<table class="stand-table">
     <thead><tr>
-      <th>#</th><th>Team</th><th>G</th><th>W</th><th>Gl</th><th>V</th>
+      <th>#</th><th>Team</th><th>G</th>
       <th>Pts</th><th>Saldo</th>
     </tr></thead>
     <tbody>${stand.map((t,i) => {
@@ -678,7 +678,7 @@ function htmlRanglijstCompact(compId) {
       return `<tr class="${t.rosmalen?'rosmalen-row':''}">
         <td class="stand-pos ${posClass}">${i+1}</td>
         <td style="font-weight:${t.rosmalen?'700':'400'};color:${t.rosmalen?'var(--green)':'var(--text)'};font-size:12px">${t.naam}</td>
-        <td>${t.g}</td><td>${t.w}</td><td>${t.gl}</td><td>${t.v}</td>
+        <td>${t.g}</td>
         <td style="font-family:'Syne';font-weight:700">${t.pts}</td>
         <td style="color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${saldo}</td>
       </tr>`;
