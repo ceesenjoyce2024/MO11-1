@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doorverwijzen...</title>
+<script>
+  // Map van kleine letters naar exacte paden
+  const routes = {
+    'mo11-1': '/MO11-1/',
+    'mo12-1': '/MO12-1/',
+  };
+
+  const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+  const segment = path.split('/').pop();
+
+  if (routes[segment]) {
+    window.location.replace(routes[segment]);
+  } else {
+    // Geen bekende route gevonden — toon nette foutpagina
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('msg').style.display = 'block';
+    });
+  }
+</script>
+<style>
+  body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f5f7f5; margin: 0; }
+  .box { text-align: center; padding: 2rem; }
+  h1 { font-size: 48px; color: #1A9E6E; margin-bottom: .5rem; }
+  p { color: #5A6A5A; margin-bottom: 1.5rem; }
+  a { color: #1A9E6E; text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="box" id="msg" style="display:none">
+  <h1>404</h1>
+  <p>Deze pagina bestaat niet.</p>
+  <a href="/">← Terug naar de startpagina</a>
+</div>
+</body>
+</html>
