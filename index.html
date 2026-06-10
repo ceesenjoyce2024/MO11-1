@@ -279,6 +279,17 @@
   .pcs-val { font-weight: 600; font-family: 'Syne', sans-serif; }
   .pcs-lbl { color: var(--text3); font-size: 11px; }
   .firebase-setup { max-width: 560px; margin: 0 auto; }
+  .stand-table td.rosmalen { background: rgba(26,158,110,0.07); font-weight: 600; }
+  .stand-table tr.rosmalen-row td { background: rgba(26,158,110,0.07); }
+  .stand-pos { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--text3); }
+  .stand-pos.p1 { color: #C8960A; }
+  .stand-pos.p2 { color: #888; }
+  .stand-pos.p3 { color: #A0522D; }
+  .poule-invoer { background: var(--surface2); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 10px; }
+  .poule-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .poule-row input, .poule-row select { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text); }
+  .poule-row input.score-in { width: 52px; text-align: center; font-family: 'Syne', sans-serif; font-weight: 700; }
+  .vs-label { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: var(--text3); }
   .firebase-setup h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: .5rem; }
   .firebase-setup p { color: var(--text2); font-size: 14px; line-height: 1.6; margin-bottom: 1rem; }
   .firebase-setup ol { color: var(--text2); font-size: 14px; line-height: 1.9; padding-left: 1.25rem; margin-bottom: 1.25rem; }
@@ -355,7 +366,8 @@ const COMPS = [
 let db = null;
 let state = {
   spelers: ['Emma','Lotte','Sophie','Julia','Nina','Fleur','Saar','Merel','Lisa','Bo'],
-  wedstrijden: {}
+  wedstrijden: {},
+  poulewedstrijden: {}
 };
 let currentSection = 'totaal';
 let extraGoalRows = 0;
@@ -379,6 +391,7 @@ async function initFirebase(config) {
       const data = snap.val();
       state.spelers = data.spelers || state.spelers;
       state.wedstrijden = data.wedstrijden || {};
+      state.poulewedstrijden = data.poulewedstrijden || {};
     }
     hideLoading();
     render(currentSection);
@@ -532,6 +545,90 @@ function htmlTopscorers(topscore) {
   </table>`;
 }
 
+// ── Ranglijst ──
+function getPoulewedstrijden(compId) {
+  return Object.values(state.poulewedstrijden || {}).filter(w => w.competitie === compId);
+}
+
+function berekenStand(compId) {
+  const stand = {};
+  const ROSMALEN = 'Rosmalen MO11-1';
+
+  // Add Rosmalen's own matches
+  wedstrijdenVoor(compId).forEach(w => {
+    if (!stand[ROSMALEN]) stand[ROSMALEN] = {naam: ROSMALEN, g:0, w:0, gl:0, v:0, dv:0, dt:0, pts:0, rosmalen:true};
+    if (!stand[w.teg]) stand[w.teg] = {naam: w.teg, g:0, w:0, gl:0, v:0, dv:0, dt:0, pts:0, rosmalen:false};
+    stand[ROSMALEN].g++; stand[w.teg].g++;
+    stand[ROSMALEN].dv += w.dv; stand[ROSMALEN].dt += w.dt;
+    stand[w.teg].dv += w.dt; stand[w.teg].dt += w.dv;
+    if (w.dv > w.dt) { stand[ROSMALEN].w++; stand[ROSMALEN].pts+=3; stand[w.teg].v++; }
+    else if (w.dv < w.dt) { stand[w.teg].w++; stand[w.teg].pts+=3; stand[ROSMALEN].v++; }
+    else { stand[ROSMALEN].gl++; stand[ROSMALEN].pts+=1; stand[w.teg].gl++; stand[w.teg].pts+=1; }
+  });
+
+  // Add poule matches between other teams
+  getPoulewedstrijden(compId).forEach(w => {
+    if (!stand[w.t1]) stand[w.t1] = {naam: w.t1, g:0, w:0, gl:0, v:0, dv:0, dt:0, pts:0, rosmalen:false};
+    if (!stand[w.t2]) stand[w.t2] = {naam: w.t2, g:0, w:0, gl:0, v:0, dv:0, dt:0, pts:0, rosmalen:false};
+    stand[w.t1].g++; stand[w.t2].g++;
+    stand[w.t1].dv += w.s1; stand[w.t1].dt += w.s2;
+    stand[w.t2].dv += w.s2; stand[w.t2].dt += w.s1;
+    if (w.s1 > w.s2) { stand[w.t1].w++; stand[w.t1].pts+=3; stand[w.t2].v++; }
+    else if (w.s1 < w.s2) { stand[w.t2].w++; stand[w.t2].pts+=3; stand[w.t1].v++; }
+    else { stand[w.t1].gl++; stand[w.t1].pts+=1; stand[w.t2].gl++; stand[w.t2].pts+=1; }
+  });
+
+  return Object.values(stand).sort((a,b) => b.pts-a.pts || (b.dv-b.dt)-(a.dv-a.dt) || b.dv-a.dv);
+}
+
+function htmlRanglijst(compId) {
+  const stand = berekenStand(compId);
+  if (!stand.length) return `<p class="empty">Nog geen wedstrijden — voeg tegenstanders toe via "Poule-uitslag invoeren".</p>`;
+  return `<table class="stand-table">
+    <thead><tr>
+      <th>#</th><th>Team</th><th>G</th><th>W</th><th>Gl</th><th>V</th>
+      <th>Pts</th><th>Saldo</th><th class="hide-mob">Voor</th><th class="hide-mob">Tegen</th>
+    </tr></thead>
+    <tbody>${stand.map((t,i) => {
+      const posClass = i===0?'p1':i===1?'p2':i===2?'p3':'';
+      const saldo = t.dv - t.dt;
+      return `<tr class="${t.rosmalen?'rosmalen-row':''}">
+        <td class="stand-pos ${posClass}">${i+1}</td>
+        <td style="font-weight:${t.rosmalen?'700':'400'};color:${t.rosmalen?'var(--green)':'var(--text)'}">${t.naam}</td>
+        <td>${t.g}</td><td>${t.w}</td><td>${t.gl}</td><td>${t.v}</td>
+        <td style="font-family:'Syne';font-weight:700">${t.pts}</td>
+        <td style="color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${saldo}</td>
+        <td class="hide-mob">${t.dv}</td><td class="hide-mob">${t.dt}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function htmlPouleInvoer(compId) {
+  const pw = getPoulewedstrijden(compId);
+  // Collect known teams from own matches
+  const teams = [...new Set(wedstrijdenVoor(compId).map(w => w.teg))];
+  const teamOpts = (selected='') => ['<option value="">– team –', ...teams.map(t=>`<option value="${t}" ${t===selected?'selected':''}>${t}</option>`)].join('');
+  const pwRows = pw.length ? pw.map(w => `
+    <div class="poule-row">
+      <span style="font-size:13px;flex:1">${w.t1} ${w.s1}–${w.s2} ${w.t2}</span>
+      <button class="btn-danger" onclick="deletePouleWedstrijd('${w.id}','${compId}')">✕</button>
+    </div>`).join('') : '';
+  return `
+    ${pwRows ? `<div style="margin-bottom:10px">${pwRows}</div>` : ''}
+    <div class="poule-invoer">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px">Uitslag invoeren</div>
+      <div class="poule-row">
+        <input type="text" id="pw_t1_${compId}" placeholder="Thuisteam" style="flex:1;min-width:100px">
+        <input type="number" class="score-in" id="pw_s1_${compId}" value="0" min="0">
+        <span class="vs-label">–</span>
+        <input type="number" class="score-in" id="pw_s2_${compId}" value="0" min="0">
+        <input type="text" id="pw_t2_${compId}" placeholder="Uitteam" style="flex:1;min-width:100px">
+        <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="slaPouleOp('${compId}')">Opslaan</button>
+      </div>
+    </div>`;
+}
+
 // ── Comp section ──
 function renderComp(id) {
   const comp = COMPS.find(c => c.id===id);
@@ -545,6 +642,15 @@ function renderComp(id) {
         <div class="comp-title">${comp.naam}</div>
       </div>
     </div>
+    ${id !== 'oefenwedstrijden' ? `
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header" style="margin-bottom:.75rem">
+        <div class="card-title">Ranglijst</div>
+        <button class="btn-sm" onclick="togglePouleInvoer('${id}')">＋ Poule-uitslag</button>
+      </div>
+      <div id="poule_invoer_${id}" style="display:none;margin-bottom:12px">${htmlPouleInvoer(id)}</div>
+      ${htmlRanglijst(id)}
+    </div>` : ''}
     ${htmlMetrics(stats)}
     <div class="tab-bar">
       <button class="tab-btn active" id="tab_w_${id}" onclick="switchTab('${id}','w')">Wedstrijden</button>
@@ -560,6 +666,34 @@ window.switchTab = function(id, pane) {
     document.getElementById(`tab_${p}_${id}`).classList.toggle('active', p===pane);
     document.getElementById(`pane_${p}_${id}`).style.display = p===pane?'':'none';
   });
+}
+
+window.togglePouleInvoer = function(compId) {
+  const el = document.getElementById('poule_invoer_' + compId);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+window.slaPouleOp = async function(compId) {
+  const t1 = document.getElementById('pw_t1_' + compId).value.trim();
+  const t2 = document.getElementById('pw_t2_' + compId).value.trim();
+  const s1 = parseInt(document.getElementById('pw_s1_' + compId).value) || 0;
+  const s2 = parseInt(document.getElementById('pw_s2_' + compId).value) || 0;
+  if (!t1 || !t2) { toast('Vul beide teamnamen in'); return; }
+  if (t1 === t2) { toast('Teams mogen niet hetzelfde zijn'); return; }
+  const id = 'pw_' + Date.now();
+  if (!state.poulewedstrijden) state.poulewedstrijden = {};
+  state.poulewedstrijden[id] = { id, competitie: compId, t1, t2, s1, s2 };
+  await save();
+  toast('Uitslag opgeslagen ✓');
+  renderComp(compId);
+}
+
+window.deletePouleWedstrijd = async function(id, compId) {
+  if (!confirm('Uitslag verwijderen?')) return;
+  delete state.poulewedstrijden[id];
+  await save();
+  toast('Uitslag verwijderd');
+  renderComp(compId);
 }
 
 // ── Totaal ──
