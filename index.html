@@ -507,7 +507,7 @@ function htmlMetrics(s) {
 // ── Render wedstrijdtabel ──
 function htmlWedstrijden(ws) {
   if (!ws.length) return `<p class="empty">Nog geen wedstrijden ingevoerd.</p>`;
-  const sorted = [...ws].sort((a,b)=>(a.datum||'').localeCompare(b.datum||''));
+  const sorted = [...ws].sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
   return `<table>
     <thead><tr>
       <th>Datum</th><th>Tegenstander</th>
@@ -544,7 +544,7 @@ function htmlAlleWedstrijden(compId) {
   const alles = [
     ...eigen.map(w => ({ datum: w.datum||'', soort: 'eigen', data: w })),
     ...poule.map(w => ({ datum: w.datum||'', soort: 'poule', data: w }))
-  ].sort((a,b) => a.datum.localeCompare(b.datum));
+  ].sort((a,b) => b.datum.localeCompare(a.datum));
 
   if (!alles.length) return `<p class="empty">Nog geen wedstrijden ingevoerd.</p>`;
 
