@@ -781,23 +781,31 @@ function renderTotaal() {
   const all = allWedstrijden();
   const stats = getStats(all);
   const topscore = getTopscorers(all);
-  const perComp = COMPS.map(c => {
-    const ws = wedstrijdenVoor(c.id);
-    const s = getStats(ws);
-    return `<div class="per-comp-card" onclick="showSection('${c.id}')">
-      <h4>${c.naam}</h4>
-      <div class="per-comp-stats">
-        <div><div class="pcs-val">${s.gespeeld}</div><div class="pcs-lbl">gespeeld</div></div>
-        <div><div class="pcs-val" style="color:var(--green)">${s.punten}</div><div class="pcs-lbl">punten</div></div>
-        <div><div class="pcs-val" style="color:${s.saldo>=0?'var(--green)':'var(--red)'}">${s.saldo>=0?'+':''}${s.saldo}</div><div class="pcs-lbl">saldo</div></div>
-      </div>
-    </div>`;
+
+  // Ranglijsten van de 4 competities (niet oefenwedstrijden)
+  const ranglijsten = COMPS.filter(comp => comp.id !== 'oefenwedstrijden').map(comp => {
+    const stand = berekenStand(comp.id);
+    const ws = wedstrijdenVoor(comp.id);
+    if (!stand.length && !ws.length) return `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header" style="margin-bottom:.5rem">
+          <div class="card-title" style="cursor:pointer" onclick="showSection('${comp.id}')">${comp.naam}</div>
+        </div>
+        <p class="empty">Nog geen wedstrijden ingevoerd.</p>
+      </div>`;
+    return `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header" style="margin-bottom:.75rem">
+          <div class="card-title" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="showSection('${comp.id}')">${comp.naam}</div>
+        </div>
+        ${htmlRanglijst(comp.id)}
+      </div>`;
   }).join('');
 
   document.getElementById('totaal').innerHTML = `
     <div class="page-title">Totaal overzicht</div>
     ${htmlMetrics(stats)}
-    <div class="per-comp-grid">${perComp}</div>
+    ${ranglijsten}
     <div class="card">
       <div class="card-header">
         <div class="card-title">Topscoorders — alle competities</div>
