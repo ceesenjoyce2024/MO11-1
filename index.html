@@ -454,11 +454,12 @@ function getTopscorers(ws) {
   const map = {};
   ws.forEach(w => {
     (w.goals||[]).forEach(g => {
-      if(!map[g.s]) map[g.s]={goals:0,sc:0,assists:0};
+      if(!map[g.s]) map[g.s]={goals:0,sc:0,sb:0,assists:0};
       map[g.s].goals++;
       if(g.sc) map[g.s].sc++;
+      if(g.sb) map[g.s].sb++;
       if(g.a) {
-        if(!map[g.a]) map[g.a]={goals:0,sc:0,assists:0};
+        if(!map[g.a]) map[g.a]={goals:0,sc:0,sb:0,assists:0};
         map[g.a].assists++;
       }
     });
@@ -496,7 +497,7 @@ function htmlWedstrijden(ws) {
     <tbody>${sorted.map(w => {
       const r = resultaat(w);
       const scorers = (w.goals||[]).map(g =>
-        `${g.s}${g.sc?'<span class="badge badge-sc" style="margin-left:3px">SC</span>':''}${g.a?`<span style="color:var(--text3);font-size:11px"> ▸${g.a}</span>`:''}`
+        `${g.s}${g.sc?'<span class="badge badge-sc" style="margin-left:3px">SC</span>':''}${g.sb?'<span class="badge badge-sc" style="margin-left:3px;background:#EEE6FB;color:#5B1FA3">SB</span>':''}${g.a?`<span style="color:var(--text3);font-size:11px"> ▸${g.a}</span>`:''}`
       ).join(', ');
       const id = w.id;
       return `<tr>
@@ -516,7 +517,7 @@ function htmlWedstrijden(ws) {
 function htmlTopscorers(topscore) {
   if (!topscore.length) return `<p class="empty">Geen doelpunten geregistreerd.</p>`;
   return `<table>
-    <thead><tr><th>#</th><th>Speelster</th><th>Goals</th><th>w/ SC</th><th>Assists</th></tr></thead>
+    <thead><tr><th>#</th><th>Speelster</th><th>Goals</th><th>SC</th><th>SB</th><th>Assists</th></tr></thead>
     <tbody>${topscore.map(([naam,s],i) => {
       const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
       return `<tr>
@@ -524,6 +525,7 @@ function htmlTopscorers(topscore) {
         <td style="font-weight:500">${naam}</td>
         <td><span style="font-family:'Syne';font-size:15px;font-weight:700">${s.goals}</span></td>
         <td>${s.sc?`<span class="badge badge-sc">${s.sc}</span>`:'–'}</td>
+        <td>${s.sb?`<span class="badge badge-sc" style="background:#EEE6FB;color:#5B1FA3">${s.sb}</span>`:'–'}</td>
         <td>${s.assists?`<span class="badge badge-assist">${s.assists}</span>`:'–'}</td>
       </tr>`;
     }).join('')}</tbody>
@@ -546,7 +548,7 @@ function renderComp(id) {
     ${htmlMetrics(stats)}
     <div class="tab-bar">
       <button class="tab-btn active" id="tab_w_${id}" onclick="switchTab('${id}','w')">Wedstrijden</button>
-      <button class="tab-btn" id="tab_t_${id}" onclick="switchTab('${id}','t')">Topscorers</button>
+      <button class="tab-btn" id="tab_t_${id}" onclick="switchTab('${id}','t')">Topscoorders</button>
     </div>
     <div class="card" id="pane_w_${id}">${htmlWedstrijden(ws)}</div>
     <div class="card" id="pane_t_${id}" style="display:none">${htmlTopscorers(topscore)}</div>
@@ -584,7 +586,7 @@ function renderTotaal() {
     <div class="per-comp-grid">${perComp}</div>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Topscorers — alle competities</div>
+        <div class="card-title">Topscoorders — alle competities</div>
       </div>
       ${htmlTopscorers(topscore)}
     </div>
@@ -647,6 +649,7 @@ window.addGoalRow = function() {
   div.innerHTML = `
     <select class="g_sp">${spOpts}</select>
     <label class="sc-toggle"><input type="checkbox" class="g_sc"> Strafcorner</label>
+    <label class="sc-toggle"><input type="checkbox" class="g_sb"> Strafbal</label>
     <select class="g_as">${asOpts}</select>
     <button class="btn-danger" onclick="document.getElementById('${id}').remove()">✕</button>
   `;
@@ -660,8 +663,9 @@ window.slaOp = async function() {
   document.querySelectorAll('.goal-row').forEach(row => {
     const sp = row.querySelector('.g_sp').value;
     const sc = row.querySelector('.g_sc').checked;
+    const sb = row.querySelector('.g_sb').checked;
     const as = row.querySelector('.g_as').value;
-    if (sp) goals.push({ s:sp, sc, a:as||null });
+    if (sp) goals.push({ s:sp, sc, sb, a:as||null });
   });
   const id = 'w_' + Date.now();
   const w = {
