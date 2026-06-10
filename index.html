@@ -304,10 +304,17 @@
   .setup-input { width: 100%; font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); margin-bottom: 8px; }
   code { font-family: monospace; font-size: 12px; background: var(--surface2); padding: 2px 6px; border-radius: 4px; }
   @media (max-width: 600px) {
-    .metric-grid { grid-template-columns: repeat(3, 1fr); }
+    .metric-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 1rem; }
+    .metric { padding: 8px 8px; }
+    .metric-label { font-size: 10px; margin-bottom: 3px; }
+    .metric-value { font-size: 18px; }
+    .metric-sub { font-size: 10px; }
     .form-grid { grid-template-columns: 1fr 1fr; }
     th.hide-mob, td.hide-mob { display: none; }
     .header-inner { gap: 10px; }
+    .totaal-ranglijst { font-size: 11px; }
+    .totaal-ranglijst td, .totaal-ranglijst th { padding: 5px 4px; }
+    .totaal-ranglijst .stand-pos { font-size: 11px; }
   }
 </style>
 </head>
@@ -667,9 +674,9 @@ function berekenStand(compId) {
 function htmlRanglijstCompact(compId) {
   const stand = berekenStand(compId);
   if (!stand.length) return `<p class="empty" style="font-size:12px">Nog geen wedstrijden.</p>`;
-  return `<table class="stand-table">
+  return `<table class="stand-table totaal-ranglijst">
     <thead><tr>
-      <th>#</th><th>Team</th><th>G</th>
+      <th>#</th><th>Team</th><th class="hide-mob">G</th>
       <th>Pts</th><th>Saldo</th>
     </tr></thead>
     <tbody>${stand.map((t,i) => {
@@ -677,8 +684,8 @@ function htmlRanglijstCompact(compId) {
       const saldo = t.dv - t.dt;
       return `<tr class="${t.rosmalen?'rosmalen-row':''}">
         <td class="stand-pos ${posClass}">${i+1}</td>
-        <td style="font-weight:${t.rosmalen?'700':'400'};color:${t.rosmalen?'var(--green)':'var(--text)'};font-size:12px">${t.naam}</td>
-        <td>${t.g}</td>
+        <td style="font-weight:${t.rosmalen?'700':'400'};color:${t.rosmalen?'var(--green)':'var(--text)'}">${t.naam}</td>
+        <td class="hide-mob">${t.g}</td>
         <td style="font-family:'Syne';font-weight:700">${t.pts}</td>
         <td style="color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${saldo}</td>
       </tr>`;
