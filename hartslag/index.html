@@ -458,7 +458,7 @@ function tekenWeek() {
   var ma   = getMaandag(weekOffset);
   var days = [];
   for (var i=0;i<7;i++) { var d=new Date(ma); d.setDate(ma.getDate()+i); days.push(d); }
-  var strs = days.map(function(d) { return d.toISOString().split('T')[0]; });
+  var strs = days.map(function(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); });
   var _nu = new Date(); var vand = _nu.getFullYear()+'-'+String(_nu.getMonth()+1).padStart(2,'0')+'-'+String(_nu.getDate()).padStart(2,'0');
   var zo   = days[6];
   var opt  = {day:'numeric',month:'short'};
@@ -469,7 +469,7 @@ function tekenWeek() {
   document.getElementById('pijl-rechts').disabled = weekOffset===0;
 
   document.getElementById('dag-grid').innerHTML = days.map(function(d) {
-    var ds=d.toISOString().split('T')[0];
+    var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     var dM=window._metingen.filter(function(m) { return m.datum===ds; });
     var och=dM.find(function(m) { return m.moment==='ochtend'; });
     var av =dM.find(function(m) { return m.moment==='avond'; });
@@ -502,7 +502,7 @@ function tekenWeek() {
     '<div class="gem-waarde" style="color:' + x[2] + '">' + x[1] + '</div></div>'; }).join('');
 
   var dagData = days.map(function(d) {
-    var ds=d.toISOString().split('T')[0];
+    var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     var dM=window._metingen.filter(function(m) { return m.datum===ds; });
     return { dag: DAGEN_NL[d.getDay()],
       hs:    dM.length ? avg(dM.map(function(m){return m.hartslag;})) : null,
@@ -522,7 +522,7 @@ function tekenWeek() {
   document.getElementById('week-details').innerHTML =
     '<div style="font-size:13px;color:#5a7da0;font-weight:600;margin:14px 0 8px">Alle metingen deze week</div>' +
     days.map(function(d) {
-      var ds=d.toISOString().split('T')[0];
+      var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       var dM=window._metingen.filter(function(m) { return m.datum===ds; });
       if (!dM.length) return '';
       return '<div class="detail-dag-label">' + DAGEN_LANG[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_NL[d.getMonth()] + '</div>' +
