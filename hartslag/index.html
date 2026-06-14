@@ -429,7 +429,7 @@ async function verwijderen(id) {
 }
 
 function tekenInvoer() {
-  var vandaag = new Date().toISOString().split('T')[0];
+  var _nd = new Date(); var vandaag = _nd.getFullYear()+'-'+String(_nd.getMonth()+1).padStart(2,'0')+'-'+String(_nd.getDate()).padStart(2,'0');
   var vd  = window._metingen.filter(function(m) { return m.datum===vandaag; });
   var blok = document.getElementById('vandaag-blok');
   if (!vd.length) { blok.innerHTML=''; return; }
@@ -443,10 +443,14 @@ function tekenInvoer() {
 }
 
 function getMaandag(offset) {
-  var nu=new Date(), dag=nu.getDay();
-  var ma=new Date(nu);
-  ma.setDate(nu.getDate()+(dag===0?-6:1-dag)+offset*7);
-  ma.setHours(0,0,0,0); return ma;
+  // Gebruik lokale datum om tijdzone-problemen te vermijden
+  var nu = new Date();
+  var lokaal = new Date(nu.getFullYear(), nu.getMonth(), nu.getDate());
+  var dag = lokaal.getDay(); // 0=zo, 1=ma, ..., 6=za
+  var diffNaarMa = dag===0 ? -6 : 1-dag;
+  var ma = new Date(lokaal);
+  ma.setDate(lokaal.getDate() + diffNaarMa + offset*7);
+  return ma;
 }
 function weekStap(d) { weekOffset=Math.min(weekOffset+d,0); tekenWeek(); }
 
@@ -455,7 +459,7 @@ function tekenWeek() {
   var days = [];
   for (var i=0;i<7;i++) { var d=new Date(ma); d.setDate(ma.getDate()+i); days.push(d); }
   var strs = days.map(function(d) { return d.toISOString().split('T')[0]; });
-  var vand = new Date().toISOString().split('T')[0];
+  var _nu = new Date(); var vand = _nu.getFullYear()+'-'+String(_nu.getMonth()+1).padStart(2,'0')+'-'+String(_nu.getDate()).padStart(2,'0');
   var zo   = days[6];
   var opt  = {day:'numeric',month:'short'};
   document.getElementById('week-label').textContent =
